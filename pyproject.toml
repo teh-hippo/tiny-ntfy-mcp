@@ -1,6 +1,6 @@
 [project]
 name = "tiny-ntfy-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Tiny local MCP server for fast, low-impact notifications via ntfy."
 authors = [
     { name = "teh-hippo", email = "490309+teh-hippo@users.noreply.github.com" }
