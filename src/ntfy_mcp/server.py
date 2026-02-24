@@ -60,7 +60,8 @@ def _configure_logging() -> None:
 
 _configure_logging()
 
-_EMPTY_OBJ_SCHEMA: dict[str, Any] = {"type": ["object", "null"], "properties": {}, "additionalProperties": False}
+# Copilot CLI validates tool schemas strictly and currently expects `"type": "object"`.
+_EMPTY_OBJ_SCHEMA: dict[str, Any] = {"type": "object", "properties": {}, "additionalProperties": False}
 _PUBLISH_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
