@@ -40,7 +40,7 @@ Example `~/.tiny-ntfy-mcp/config.json`:
 
 ## Copilot MCP config
 
-Add to `~/.copilot/mcp-config.work.json`:
+Add to `~/.copilot/mcp-config.json`:
 
 ```json
 {
