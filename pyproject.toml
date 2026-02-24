@@ -20,6 +20,9 @@ hippo-notify-mcp = "hippo_notify_mcp.__main__:main"
 requires = ["uv_build>=0.10.4,<0.11.0"]
 build-backend = "uv_build"
 
+[tool.uv.build-backend]
+module-name = ["tiny_ntfy_mcp", "ntfy_mcp", "hippo_notify_mcp"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
