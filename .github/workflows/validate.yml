@@ -45,7 +45,7 @@ jobs:
   live-ntfy:
     name: Live ntfy E2E
     runs-on: ubuntu-latest
-    if: ${{ secrets.NTFY_CI_TOPIC != '' && github.event_name != 'schedule' }}
+    if: github.event_name != 'schedule'
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
