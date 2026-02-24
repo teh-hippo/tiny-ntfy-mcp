@@ -1,0 +1,56 @@
+name: Validate
+
+on:
+  push:
+    branches: [main, "copilot/**", "dependabot/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run pytest
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build
+
+  live-ntfy:
+    name: Live ntfy E2E
+    runs-on: ubuntu-latest
+    if: ${{ secrets.NTFY_CI_TOPIC != '' && github.event_name != 'schedule' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run pytest -m live_ntfy -v --tb=short
+        env:
+          NTFY_CI_TOPIC: ${{ secrets.NTFY_CI_TOPIC }}
+          NTFY_CI_URL: ${{ secrets.NTFY_CI_URL }}
+          NTFY_CI_TOKEN: ${{ secrets.NTFY_CI_TOKEN }}

@@ -85,3 +85,9 @@ Inputs are schema-validated; unknown fields or invalid values return `-32602 Inv
 
 - `~/.env` is `$HOME\\.env` in PowerShell.
 - Make sure `uv` is on `PATH` and the `--project` path matches where you cloned this repo.
+
+## CI/CD (GitHub)
+
+- Validate workflow runs ruff + pytest + `uv build`; optional live ntfy E2E runs when `NTFY_CI_TOPIC` secret is set.
+- Release workflow uses `python-semantic-release` to create SemVer tags + GitHub Releases from Conventional Commits.
+- Recommended repo settings: **rebase merges only**, auto-merge enabled, branch protection requiring the **Validate** check + linear history.
