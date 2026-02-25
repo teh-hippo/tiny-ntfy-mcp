@@ -1,6 +1,13 @@
 # CHANGELOG
 
 
+## v1.0.3 (2026-02-25)
+
+### Bug Fixes
+
+- Use underscore MCP tool names (`ntfy_enable`, `ntfy_disable`, `ntfy_status`, `ntfy_publish`) for Copilot/Agency compatibility.
+
+
 ## v1.0.2 (2026-02-24)
 
 ### Bug Fixes
