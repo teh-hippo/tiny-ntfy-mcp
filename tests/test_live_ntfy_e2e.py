@@ -45,7 +45,7 @@ def test_live_publish_reaches_ntfy(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     s = NtfyMcpServer()
     try:
         res = s.call_tool(
-            "ntfy.publish",
+            "ntfy_publish",
             {
                 "session": "ci",
                 "status": "progress",
@@ -57,7 +57,7 @@ def test_live_publish_reaches_ntfy(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 
         deadline = time.time() + 15.0
         while time.time() < deadline:
-            st = s.call_tool("ntfy.status", None).structuredContent or {}
+            st = s.call_tool("ntfy_status", None).structuredContent or {}
             if (st.get("sentOk") or 0) >= 1:
                 return
             if (st.get("sentErr") or 0) >= 1:

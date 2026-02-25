@@ -71,7 +71,7 @@ def test_stdio_initialize_and_tools_list(tmp_path: Path, monkeypatch: pytest.Mon
 
     assert init_resp["result"]["serverInfo"]["name"] == "tiny-ntfy-mcp"
     names = {t["name"] for t in tools_resp["result"]["tools"]}
-    assert {"ntfy.publish", "ntfy.enable", "ntfy.disable", "ntfy.status"} <= names
+    assert {"ntfy_publish", "ntfy_enable", "ntfy_disable", "ntfy_status"} <= names
 
 
 def test_publish_is_noop_when_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -87,7 +87,7 @@ def test_publish_is_noop_when_disabled(tmp_path: Path, monkeypatch: pytest.Monke
 
     s = NtfyMcpServer()
     try:
-        res = s.call_tool("ntfy.publish", {"session": "x", "result": "y"})
+        res = s.call_tool("ntfy_publish", {"session": "x", "result": "y"})
         assert res.structuredContent and res.structuredContent["enqueued"] is False
         assert res.structuredContent["reason"] == "disabled"
     finally:
@@ -109,7 +109,7 @@ def test_publish_sends_request(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, 
     s = NtfyMcpServer()
     try:
         res = s.call_tool(
-            "ntfy.publish",
+            "ntfy_publish",
             {"session": "build", "stage": 1, "total": 2, "status": "progress", "result": "started", "repo": "r"},
         )
         assert res.structuredContent and res.structuredContent["enqueued"] is True
@@ -139,8 +139,8 @@ def test_sequence_id_reused_for_updates(tmp_path: Path, monkeypatch: pytest.Monk
 
     s = NtfyMcpServer()
     try:
-        s.call_tool("ntfy.publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
-        s.call_tool("ntfy.publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
+        s.call_tool("ntfy_publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
+        s.call_tool("ntfy_publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
 
         _wait_for_requests(http_srv, 2)
         h1 = {k.lower(): v for k, v in http_srv.requests[0].headers.items()}
@@ -166,7 +166,7 @@ def test_unicode_title_is_rfc2047_encoded(tmp_path: Path, monkeypatch: pytest.Mo
 
     s = NtfyMcpServer()
     try:
-        s.call_tool("ntfy.publish", {"session": "s", "title": "Hello — world", "message": "x"})
+        s.call_tool("ntfy_publish", {"session": "s", "title": "Hello — world", "message": "x"})
         _wait_for_requests(http_srv, 1)
         title = http_srv.requests[0].headers["X-Title"]
         assert title.isascii()
@@ -189,7 +189,7 @@ def test_topic_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture
 
     s = NtfyMcpServer()
     try:
-        s.call_tool("ntfy.publish", {"session": "s", "message": "x", "topic": "t2"})
+        s.call_tool("ntfy_publish", {"session": "s", "message": "x", "topic": "t2"})
         _wait_for_requests(http_srv, 1)
         assert http_srv.requests[0].path == "/t2"
     finally:

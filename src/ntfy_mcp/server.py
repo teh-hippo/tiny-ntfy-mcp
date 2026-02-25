@@ -114,11 +114,11 @@ def _tool_def(name: str, title: str, description: str, input_schema: dict[str, A
 
 
 _PRIMARY_TOOLS = [
-    _tool_def("ntfy.enable", "Enable notifications", "Enable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
-    _tool_def("ntfy.disable", "Disable notifications", "Disable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
-    _tool_def("ntfy.status", "Notification status", "Show ntfy configuration and delivery stats.", _EMPTY_OBJ_SCHEMA),
+    _tool_def("ntfy_enable", "Enable notifications", "Enable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
+    _tool_def("ntfy_disable", "Disable notifications", "Disable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
+    _tool_def("ntfy_status", "Notification status", "Show ntfy configuration and delivery stats.", _EMPTY_OBJ_SCHEMA),
     _tool_def(
-        "ntfy.publish",
+        "ntfy_publish",
         "Publish notification",
         "Publish a progress/completion notification (fast ACK; delivery is background).",
         _PUBLISH_SCHEMA,
@@ -433,13 +433,13 @@ class NtfyMcpServer:
 
     def call_tool(self, name: str, args: dict[str, Any] | None) -> types.CallToolResult:
         args = {} if args is None else args
-        if name == "ntfy.enable":
+        if name == "ntfy_enable":
             return self._tool_set_enabled(True)
-        if name == "ntfy.disable":
+        if name == "ntfy_disable":
             return self._tool_set_enabled(False)
-        if name == "ntfy.status":
+        if name == "ntfy_status":
             return self._tool_status()
-        if name == "ntfy.publish":
+        if name == "ntfy_publish":
             return self._tool_publish(args)
         raise ValueError(f"Unknown tool: {name}")
 
@@ -503,7 +503,7 @@ class NtfyMcpServer:
 
         session = args.get("session")
         if not isinstance(session, str) or not (session := session.strip()):
-            raise ValueError("ntfy.publish: session must be a non-empty string")
+            raise ValueError("ntfy_publish: session must be a non-empty string")
 
         stage, total = args.get("stage"), args.get("total")
         result, next_step, details = args.get("result"), args.get("next"), args.get("details")
@@ -511,7 +511,7 @@ class NtfyMcpServer:
         raw_status = args.get("status")
         status = raw_status.strip().lower() if isinstance(raw_status, str) and raw_status.strip() else "progress"
         if status not in _STATUS_TAG:
-            raise ValueError("ntfy.publish: status must be one of: progress, success, warning, error, info")
+            raise ValueError("ntfy_publish: status must be one of: progress, success, warning, error, info")
 
         tags = args.get("tags")
         user_tags: list[str] = []
@@ -520,21 +520,21 @@ class NtfyMcpServer:
         elif isinstance(tags, list):
             for item in tags:
                 if not isinstance(item, str) or not item.strip():
-                    raise ValueError("ntfy.publish: tags must be a string or array of strings")
+                    raise ValueError("ntfy_publish: tags must be a string or array of strings")
                 user_tags.append(item.strip())
         elif tags is not None:
-            raise ValueError("ntfy.publish: tags must be a string or array of strings")
+            raise ValueError("ntfy_publish: tags must be a string or array of strings")
 
         priority = args.get("priority")
         eff_priority = _STATUS_PRIORITY[status]
         if isinstance(priority, int):
             if not (1 <= priority <= 5):
-                raise ValueError("ntfy.publish: priority int must be 1..5")
+                raise ValueError("ntfy_publish: priority int must be 1..5")
             eff_priority = str(priority)
         elif isinstance(priority, str) and priority.strip():
             p = priority.strip().lower()
             if p not in {"1", "2", "3", "4", "5", "min", "low", "default", "high", "max", "urgent"}:
-                raise ValueError("ntfy.publish: priority must be 1..5 or min/low/default/high/max/urgent")
+                raise ValueError("ntfy_publish: priority must be 1..5 or min/low/default/high/max/urgent")
             eff_priority = p
 
         context_tags = [f"{k}:{_sanitize_tag(v)}" for k, v in {"repo": repo, "area": area, "branch": branch}.items() if isinstance(v, str) and v.strip()]
@@ -635,7 +635,7 @@ def run_stdio() -> None:
     server = Server(
         "tiny-ntfy-mcp",
         version="0.1.0",
-        instructions="Use ntfy.enable() once, then call ntfy.publish(...) for progress/completion updates.",
+        instructions="Use ntfy_enable() once, then call ntfy_publish(...) for progress/completion updates.",
     )
 
     @server.list_tools()

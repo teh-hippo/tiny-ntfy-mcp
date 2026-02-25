@@ -1,9 +1,9 @@
 # tiny-ntfy-mcp
 
-Tiny local **MCP (stdio)** server exposing `ntfy.*` tools so agents can send fast, low-impact progress notifications via [ntfy](https://ntfy.sh/).
+Tiny local **MCP (stdio)** server exposing `ntfy_*` tools so agents can send fast, low-impact progress notifications via [ntfy](https://ntfy.sh/).
 
 - **Fast ACK:** tool calls return immediately; delivery happens in the background.
-- **Update-in-place:** by default, `ntfy.publish` sets `X-Sequence-ID` so progress updates edit a single notification instead of spamming.
+- **Update-in-place:** by default, `ntfy_publish` sets `X-Sequence-ID` so progress updates edit a single notification instead of spamming.
 
 ## Quickstart
 
@@ -55,15 +55,15 @@ Add to `~/.copilot/mcp-config.json`:
 }
 ```
 
-Restart Copilot CLI, then call `ntfy.enable` once. Use `ntfy.publish` during work; `ntfy.disable` to stop.
+Restart Copilot CLI, then call `ntfy_enable` once. Use `ntfy_publish` during work; `ntfy_disable` to stop.
 
 ## Tools
 
-- `ntfy.enable` / `ntfy.disable`: persist enablement in `~/.tiny-ntfy-mcp/state.json` (default: disabled)
-- `ntfy.status`: show config + delivery stats
-- `ntfy.publish`: send a notification
+- `ntfy_enable` / `ntfy_disable`: persist enablement in `~/.tiny-ntfy-mcp/state.json` (default: disabled)
+- `ntfy_status`: show config + delivery stats
+- `ntfy_publish`: send a notification
 
-### ntfy.publish (recommended shape)
+### ntfy_publish (recommended shape)
 
 Minimal:
 
