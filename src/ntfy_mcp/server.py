@@ -114,9 +114,13 @@ def _tool_def(name: str, title: str, description: str, input_schema: dict[str, A
 
 
 _PRIMARY_TOOLS = [
-    _tool_def("ntfy_enable", "Enable notifications", "Enable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
-    _tool_def("ntfy_disable", "Disable notifications", "Disable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
-    _tool_def("ntfy_status", "Notification status", "Show ntfy configuration and delivery stats.", _EMPTY_OBJ_SCHEMA),
+    _tool_def(
+        "ntfy_me",
+        "Enable notifications",
+        "Enable notifications and opt into automatic progress updates (persisted locally).",
+        _EMPTY_OBJ_SCHEMA,
+    ),
+    _tool_def("ntfy_off", "Disable notifications", "Disable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
     _tool_def(
         "ntfy_publish",
         "Publish notification",
@@ -433,12 +437,10 @@ class NtfyMcpServer:
 
     def call_tool(self, name: str, args: dict[str, Any] | None) -> types.CallToolResult:
         args = {} if args is None else args
-        if name == "ntfy_enable":
-            return self._tool_set_enabled(True)
-        if name == "ntfy_disable":
+        if name == "ntfy_me":
+            return self._tool_me()
+        if name == "ntfy_off":
             return self._tool_set_enabled(False)
-        if name == "ntfy_status":
-            return self._tool_status()
         if name == "ntfy_publish":
             return self._tool_publish(args)
         raise ValueError(f"Unknown tool: {name}")
@@ -454,37 +456,16 @@ class NtfyMcpServer:
         _atomic_write_json(self._state_path, {"enabled": enabled, "updatedAt": time.time()})
         return _tool_result(f"ntfy: {'enabled' if enabled else 'disabled'}", {"enabled": enabled})
 
-    def _tool_status(self) -> types.CallToolResult:
-        enabled = self._effective_enabled()
-        cfg = self._ntfy_cfg
-        worker = self._worker
-        structured: dict[str, Any] = {
-            "enabled": enabled,
-            "backend": "ntfy",
-            "configured": bool(cfg),
-            "sequenceIdForced": bool(self._forced_sequence_id),
-            "sequenceIdCount": len(self._sequence_ids),
-        }
-        if cfg:
-            structured |= {
-                "ntfyUrl": cfg.url,
-                "ntfyTopic": _redact(cfg.topic),
-                "timeoutSec": cfg.timeout_sec,
-                "dryRun": cfg.dry_run,
-                "auth": "token" if cfg.token else ("basic" if (cfg.username and cfg.password) else "none"),
-            }
-        if worker:
-            st = worker.stats
-            structured |= {
-                "queueSize": worker.queue_size,
-                "sentOk": st.sent_ok,
-                "sentErr": st.sent_err,
-                "lastSuccessAt": st.last_success_at,
-                "lastErrorAt": st.last_error_at,
-                "lastError": st.last_error,
-            }
-        txt = f"ntfy: {'enabled' if enabled else 'disabled'}; backend=ntfy; configured={'yes' if cfg else 'no'}"
-        return _tool_result(txt, structured)
+    def _tool_me(self) -> types.CallToolResult:
+        self._enabled_state = True
+        _atomic_write_json(self._state_path, {"enabled": True, "updatedAt": time.time()})
+        return _tool_result(
+            "ntfy: enabled via ntfy_me; use ntfy_publish at start, milestones, blockers/errors, and completion",
+            {
+                "enabled": True,
+                "publishCadence": ["start", "milestone", "blocker_or_error", "completion"],
+            },
+        )
 
     def _tool_publish(self, args: dict[str, Any]) -> types.CallToolResult:
         if not self._effective_enabled():
@@ -635,7 +616,10 @@ def run_stdio() -> None:
     server = Server(
         "tiny-ntfy-mcp",
         version="0.1.0",
-        instructions="Use ntfy_enable() once, then call ntfy_publish(...) for progress/completion updates.",
+        instructions=(
+            "When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, "
+            "major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications."
+        ),
     )
 
     @server.list_tools()

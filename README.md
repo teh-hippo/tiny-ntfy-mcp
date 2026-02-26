@@ -55,13 +55,15 @@ Add to `~/.copilot/mcp-config.json`:
 }
 ```
 
-Restart Copilot CLI, then call `ntfy_enable` once. Use `ntfy_publish` during work; `ntfy_disable` to stop.
+Restart Copilot CLI, then call `ntfy_me` once. Use `ntfy_publish` during work (or let the model do it automatically after `ntfy_me`); call `ntfy_off` to stop.
 
 ## Tools
 
-- `ntfy_enable` / `ntfy_disable`: persist enablement in `~/.tiny-ntfy-mcp/state.json` (default: disabled)
-- `ntfy_status`: show config + delivery stats
+- `ntfy_me`: persistently enable notifications + opt into automatic progress publishing guidance
+- `ntfy_off`: persistently disable notifications
 - `ntfy_publish`: send a notification
+
+If you used older command names, switch to `ntfy_me` and `ntfy_off`.
 
 ### ntfy_publish (recommended shape)
 

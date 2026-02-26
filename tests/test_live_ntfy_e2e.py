@@ -55,13 +55,15 @@ def test_live_publish_reaches_ntfy(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         )
         assert res.structuredContent and res.structuredContent["enqueued"] is True
 
+        worker = s._worker
+        assert worker is not None
         deadline = time.time() + 15.0
         while time.time() < deadline:
-            st = s.call_tool("ntfy_status", None).structuredContent or {}
-            if (st.get("sentOk") or 0) >= 1:
+            st = worker.stats
+            if st.sent_ok >= 1:
                 return
-            if (st.get("sentErr") or 0) >= 1:
-                raise AssertionError(f"ntfy publish failed: {st.get('lastError')}")
+            if st.sent_err >= 1:
+                raise AssertionError(f"ntfy publish failed: {st.last_error}")
             time.sleep(0.05)
         raise AssertionError("timed out waiting for ntfy delivery")
     finally:

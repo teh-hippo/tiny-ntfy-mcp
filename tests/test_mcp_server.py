@@ -71,7 +71,32 @@ def test_stdio_initialize_and_tools_list(tmp_path: Path, monkeypatch: pytest.Mon
 
     assert init_resp["result"]["serverInfo"]["name"] == "tiny-ntfy-mcp"
     names = {t["name"] for t in tools_resp["result"]["tools"]}
-    assert {"ntfy_publish", "ntfy_enable", "ntfy_disable", "ntfy_status"} <= names
+    assert names == {"ntfy_publish", "ntfy_me", "ntfy_off"}
+
+
+def test_ntfy_me_and_off_toggle_enabled_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    state, cfg, env = _tmp_paths(tmp_path)
+    state.write_text(json.dumps({"enabled": False}), encoding="utf-8")
+    cfg.write_text("{}", encoding="utf-8")
+    env.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
+    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
+    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
+    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+
+    s = NtfyMcpServer()
+    try:
+        on = s.call_tool("ntfy_me", None)
+        assert on.structuredContent and on.structuredContent["enabled"] is True
+        assert on.structuredContent["publishCadence"] == ["start", "milestone", "blocker_or_error", "completion"]
+        assert json.loads(state.read_text(encoding="utf-8"))["enabled"] is True
+
+        off = s.call_tool("ntfy_off", None)
+        assert off.structuredContent and off.structuredContent["enabled"] is False
+        assert json.loads(state.read_text(encoding="utf-8"))["enabled"] is False
+    finally:
+        s.close()
 
 
 def test_publish_is_noop_when_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
