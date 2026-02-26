@@ -616,10 +616,7 @@ def run_stdio() -> None:
     server = Server(
         "tiny-ntfy-mcp",
         version="0.1.0",
-        instructions=(
-            "When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, "
-            "major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications."
-        ),
+        instructions=("When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications."),
     )
 
     @server.list_tools()
