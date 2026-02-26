@@ -5,18 +5,18 @@ import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 import pytest
 
 from ntfy_mcp.server import NtfyMcpServer
 
 
-def _tmp_paths(tmp_path: Path) -> tuple[Path, Path, Path]:
-    state = tmp_path / "state.json"
-    cfg = tmp_path / "config.json"
-    env = tmp_path / ".env"
-    return state, cfg, env
+def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove all config env vars so tests start clean."""
+    for key in ("NTFY_TOPIC", "NTFY_URL", "NTFY_TOKEN", "NTFY_USERNAME", "NTFY_PASSWORD",
+                "NTFY_MCP_ENABLED", "NTFY_MCP_DRY_RUN", "NTFY_MCP_TIMEOUT_SEC",
+                "NTFY_MCP_SEQUENCE_ID", "NTFY_MCP_LOG_LEVEL"):
+        monkeypatch.delenv(key, raising=False)
 
 
 def _wait_for_requests(srv, count: int, timeout: float = 2.0) -> None:
@@ -29,16 +29,8 @@ def _wait_for_requests(srv, count: int, timeout: float = 2.0) -> None:
     raise AssertionError(f"timed out waiting for {count} request(s), got {len(srv.requests)}")
 
 
-def test_stdio_initialize_and_tools_list(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": False}), encoding="utf-8")
-    cfg.write_text("{}", encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
-    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clean_env(monkeypatch)
 
     init = {
         "jsonrpc": "2.0",
@@ -74,41 +66,23 @@ def test_stdio_initialize_and_tools_list(tmp_path: Path, monkeypatch: pytest.Mon
     assert names == {"ntfy_publish", "ntfy_me", "ntfy_off"}
 
 
-def test_ntfy_me_and_off_toggle_enabled_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": False}), encoding="utf-8")
-    cfg.write_text("{}", encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
-    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+def test_ntfy_me_and_off_toggle_enabled_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clean_env(monkeypatch)
 
     s = NtfyMcpServer()
     try:
         on = s.call_tool("ntfy_me", None)
         assert on.structuredContent and on.structuredContent["enabled"] is True
         assert on.structuredContent["publishCadence"] == ["start", "milestone", "blocker_or_error", "completion"]
-        assert json.loads(state.read_text(encoding="utf-8"))["enabled"] is True
 
         off = s.call_tool("ntfy_off", None)
         assert off.structuredContent and off.structuredContent["enabled"] is False
-        assert json.loads(state.read_text(encoding="utf-8"))["enabled"] is False
     finally:
         s.close()
 
 
-def test_publish_is_noop_when_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": False}), encoding="utf-8")
-    cfg.write_text("{}", encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
-    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+def test_publish_is_noop_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clean_env(monkeypatch)
 
     s = NtfyMcpServer()
     try:
@@ -119,20 +93,15 @@ def test_publish_is_noop_when_disabled(tmp_path: Path, monkeypatch: pytest.Monke
         s.close()
 
 
-def test_publish_sends_request(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
+def test_publish_sends_request(monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
     base_url, http_srv = capture_http_server
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": True}), encoding="utf-8")
-    cfg.write_text(json.dumps({"NTFY_TOPIC": "t1", "NTFY_URL": base_url}), encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
-    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+    _clean_env(monkeypatch)
+    monkeypatch.setenv("NTFY_TOPIC", "t1")
+    monkeypatch.setenv("NTFY_URL", base_url)
 
     s = NtfyMcpServer()
     try:
+        s.call_tool("ntfy_me", None)
         res = s.call_tool(
             "ntfy_publish",
             {"session": "build", "stage": 1, "total": 2, "status": "progress", "result": "started", "repo": "r"},
@@ -150,20 +119,15 @@ def test_publish_sends_request(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, 
         s.close()
 
 
-def test_sequence_id_reused_for_updates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
+def test_sequence_id_reused_for_updates(monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
     base_url, http_srv = capture_http_server
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": True}), encoding="utf-8")
-    cfg.write_text(json.dumps({"NTFY_TOPIC": "t1", "NTFY_URL": base_url}), encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
-    monkeypatch.delenv("NTFY_MCP_ENABLED", raising=False)
+    _clean_env(monkeypatch)
+    monkeypatch.setenv("NTFY_TOPIC", "t1")
+    monkeypatch.setenv("NTFY_URL", base_url)
 
     s = NtfyMcpServer()
     try:
+        s.call_tool("ntfy_me", None)
         s.call_tool("ntfy_publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
         s.call_tool("ntfy_publish", {"session": "s", "status": "progress", "repo": "r", "area": "a"})
 
@@ -177,16 +141,11 @@ def test_sequence_id_reused_for_updates(tmp_path: Path, monkeypatch: pytest.Monk
         s.close()
 
 
-def test_unicode_title_is_rfc2047_encoded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
+def test_unicode_title_is_rfc2047_encoded(monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
     base_url, http_srv = capture_http_server
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": True}), encoding="utf-8")
-    cfg.write_text(json.dumps({"NTFY_TOPIC": "t1", "NTFY_URL": base_url}), encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
+    _clean_env(monkeypatch)
+    monkeypatch.setenv("NTFY_TOPIC", "t1")
+    monkeypatch.setenv("NTFY_URL", base_url)
     monkeypatch.setenv("NTFY_MCP_ENABLED", "1")
 
     s = NtfyMcpServer()
@@ -200,16 +159,11 @@ def test_unicode_title_is_rfc2047_encoded(tmp_path: Path, monkeypatch: pytest.Mo
         s.close()
 
 
-def test_topic_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
+def test_topic_override(monkeypatch: pytest.MonkeyPatch, capture_http_server) -> None:
     base_url, http_srv = capture_http_server
-    state, cfg, env = _tmp_paths(tmp_path)
-    state.write_text(json.dumps({"enabled": True}), encoding="utf-8")
-    cfg.write_text(json.dumps({"NTFY_TOPIC": "t1", "NTFY_URL": base_url}), encoding="utf-8")
-    env.write_text("", encoding="utf-8")
-
-    monkeypatch.setenv("NTFY_MCP_STATE_PATH", str(state))
-    monkeypatch.setenv("NTFY_MCP_CONFIG_PATH", str(cfg))
-    monkeypatch.setenv("NTFY_MCP_ENV_PATH", str(env))
+    _clean_env(monkeypatch)
+    monkeypatch.setenv("NTFY_TOPIC", "t1")
+    monkeypatch.setenv("NTFY_URL", base_url)
     monkeypatch.setenv("NTFY_MCP_ENABLED", "1")
 
     s = NtfyMcpServer()

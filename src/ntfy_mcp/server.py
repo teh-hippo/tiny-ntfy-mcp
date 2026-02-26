@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import json
 import logging
 import os
 import queue
@@ -14,7 +13,6 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from email.header import Header
-from pathlib import Path
 from typing import Any
 
 import anyio
@@ -26,8 +24,6 @@ from mcp.shared.exceptions import McpError
 
 _STATUS_TAG = dict(progress="loudspeaker", success="heavy_check_mark", warning="warning", error="rotating_light", info="information_source")
 _STATUS_PRIORITY = dict(progress="low", info="default", success="high", warning="high", error="urgent")
-_STATE_DIR = Path.home() / ".tiny-ntfy-mcp"
-_LEGACY_STATE_DIRS = (Path.home() / ".ntfy-mcp", Path.home() / ".hippo-notify")
 
 _LOG = logging.getLogger("tiny-ntfy-mcp")
 
@@ -36,7 +32,7 @@ def _configure_logging() -> None:
     if _LOG.handlers:
         return
 
-    raw_level = (os.getenv("NTFY_MCP_LOG_LEVEL") or os.getenv("HIPPO_NOTIFY_LOG_LEVEL") or "").strip().upper()
+    raw_level = (os.getenv("NTFY_MCP_LOG_LEVEL") or "").strip().upper()
     if raw_level in {"", "0", "OFF", "NONE"}:
         level = logging.WARNING
     elif raw_level.isdigit():
@@ -117,10 +113,10 @@ _PRIMARY_TOOLS = [
     _tool_def(
         "ntfy_me",
         "Enable notifications",
-        "Enable notifications and opt into automatic progress updates (persisted locally).",
+        "Enable notifications and opt into automatic progress updates.",
         _EMPTY_OBJ_SCHEMA,
     ),
-    _tool_def("ntfy_off", "Disable notifications", "Disable notifications (persisted locally).", _EMPTY_OBJ_SCHEMA),
+    _tool_def("ntfy_off", "Disable notifications", "Disable notifications.", _EMPTY_OBJ_SCHEMA),
     _tool_def(
         "ntfy_publish",
         "Publish notification",
@@ -151,78 +147,6 @@ def _redact(value: str | None, *, keep_end: int = 4) -> str | None:
     return ("*" * (len(value) - keep_end)) + value[-keep_end:]
 
 
-def _load_env_file(path: Path) -> dict[str, str]:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return {}
-
-    out: dict[str, str] = {}
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[len("export ") :].lstrip()
-        key, sep, val = line.partition("=")
-        if not sep:
-            continue
-        key = key.strip()
-        val = val.strip()
-        if not key:
-            continue
-        if (val.startswith("'") and val.endswith("'")) or (val.startswith('"') and val.endswith('"')):
-            val = val[1:-1]
-        out[key] = val
-    return out
-
-
-def _load_json_config(path: Path) -> dict[str, Any]:
-    try:
-        text = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return {}
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        _LOG.warning("invalid JSON in %s", path)
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
-def _path(*env_keys: str, default: Path) -> Path:
-    for key in env_keys:
-        if (raw := os.getenv(key)) is not None:
-            return Path(raw).expanduser()
-    return default
-
-
-def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
-
-
-def _read_enabled_from_state(path: Path) -> bool:
-    for p in (path, *(d / "state.json" for d in _LEGACY_STATE_DIRS)):
-        try:
-            raw = p.read_text(encoding="utf-8")
-            break
-        except FileNotFoundError:
-            continue
-    else:
-        return False
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return False
-    if isinstance(data, dict):
-        enabled = data.get("enabled")
-        if isinstance(enabled, bool):
-            return enabled
-    return False
-
 
 @dataclass(frozen=True)
 class NtfyConfig:
@@ -243,19 +167,10 @@ class NtfyConfig:
         return f"{base}/{topic}"
 
 
-def _load_ntfy_config(config_path: Path, env_path: Path) -> NtfyConfig | None:
-    env_file = _load_env_file(env_path)
-    cfg_file: dict[str, Any] = {}
-    for p in (Path.home() / ".hippo-notify" / "config.json", Path.home() / ".ntfy-mcp" / "config.json", config_path):
-        cfg_file.update(_load_json_config(p))
-
+def _load_ntfy_config() -> NtfyConfig | None:
     def get(key: str) -> str | None:
-        # Precedence: process env > ~/.env > config.json
-        for src in (os.environ, env_file, cfg_file):
-            v = src.get(key)  # type: ignore[attr-defined]
-            if isinstance(v, str):
-                return v
-        return None
+        v = os.environ.get(key)
+        return v if isinstance(v, str) else None
 
     def get_float(key: str, default: float) -> float:
         raw = get(key)
@@ -280,8 +195,8 @@ def _load_ntfy_config(config_path: Path, env_path: Path) -> NtfyConfig | None:
         token=get("NTFY_TOKEN"),
         username=get("NTFY_USERNAME"),
         password=get("NTFY_PASSWORD"),
-        timeout_sec=get_float("NTFY_MCP_TIMEOUT_SEC", get_float("HIPPO_NOTIFY_TIMEOUT_SEC", 2.0)),
-        dry_run=get_bool("NTFY_MCP_DRY_RUN", get_bool("HIPPO_NOTIFY_DRY_RUN", False)),
+        timeout_sec=get_float("NTFY_MCP_TIMEOUT_SEC", 2.0),
+        dry_run=get_bool("NTFY_MCP_DRY_RUN", False),
     )
 
 
@@ -410,25 +325,10 @@ class NtfyWorker:
 
 class NtfyMcpServer:
     def __init__(self) -> None:
-        self._state_path = _path(
-            "NTFY_MCP_STATE_PATH",
-            "HIPPO_NOTIFY_STATE_PATH",
-            default=_STATE_DIR / "state.json",
-        )
-        self._config_path = _path(
-            "NTFY_MCP_CONFIG_PATH",
-            "HIPPO_NOTIFY_CONFIG_PATH",
-            default=_STATE_DIR / "config.json",
-        )
-        self._env_path = _path(
-            "NTFY_MCP_ENV_PATH",
-            "HIPPO_NOTIFY_ENV_PATH",
-            default=Path.home() / ".env",
-        )
-        self._enabled_state = _read_enabled_from_state(self._state_path)
-        self._ntfy_cfg = _load_ntfy_config(self._config_path, self._env_path)
+        self._enabled_state = False
+        self._ntfy_cfg = _load_ntfy_config()
         self._worker = NtfyWorker(self._ntfy_cfg) if self._ntfy_cfg else None
-        self._forced_sequence_id = os.getenv("NTFY_MCP_SEQUENCE_ID") or os.getenv("HIPPO_NOTIFY_SEQUENCE_ID")
+        self._forced_sequence_id = os.getenv("NTFY_MCP_SEQUENCE_ID")
         self._sequence_ids: dict[str, str] = {}
 
     def close(self) -> None:
@@ -448,17 +348,15 @@ class NtfyMcpServer:
     # --- Tools ---
 
     def _effective_enabled(self) -> bool:
-        forced = _parse_bool(os.getenv("NTFY_MCP_ENABLED") or os.getenv("HIPPO_NOTIFY_ENABLED"))
+        forced = _parse_bool(os.getenv("NTFY_MCP_ENABLED"))
         return self._enabled_state if forced is None else forced
 
     def _tool_set_enabled(self, enabled: bool) -> types.CallToolResult:
         self._enabled_state = enabled
-        _atomic_write_json(self._state_path, {"enabled": enabled, "updatedAt": time.time()})
         return _tool_result(f"ntfy: {'enabled' if enabled else 'disabled'}", {"enabled": enabled})
 
     def _tool_me(self) -> types.CallToolResult:
         self._enabled_state = True
-        _atomic_write_json(self._state_path, {"enabled": True, "updatedAt": time.time()})
         return _tool_result(
             "ntfy: enabled via ntfy_me; use ntfy_publish at start, milestones, blockers/errors, and completion",
             {
@@ -477,7 +375,7 @@ class NtfyMcpServer:
         cfg = self._ntfy_cfg
         if not cfg:
             return _tool_result(
-                "ntfy: missing NTFY_TOPIC (configure env or ~/.env)",
+                "ntfy: missing NTFY_TOPIC (set via env)",
                 {"configured": False},
                 is_error=True,
             )

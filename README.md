@@ -13,11 +13,7 @@ Tiny local **MCP (stdio)** server exposing `ntfy_*` tools so agents can send fas
 
 ## Configuration
 
-Config precedence:
-
-1. Environment variables
-2. `~/.env`
-3. `~/.tiny-ntfy-mcp/config.json`
+Set `NTFY_TOPIC` (and auth if needed) via the MCP config `env` block (see below), environment variables, or `mise env`.
 
 Required:
 
@@ -27,16 +23,10 @@ Optional:
 
 - `NTFY_URL` (default: `https://ntfy.sh`)
 - Auth: `NTFY_TOKEN` **or** `NTFY_USERNAME` + `NTFY_PASSWORD`
-- `NTFY_MCP_ENABLED` = `1`/`0` (overrides persisted state)
+- `NTFY_MCP_ENABLED` = `1`/`0` (overrides in-session state)
 - `NTFY_MCP_TIMEOUT_SEC` (default: `2`)
 - `NTFY_MCP_DRY_RUN` = `1` (log publishes to stderr without sending)
 - `NTFY_MCP_LOG_LEVEL` = `DEBUG|INFO|WARNING|ERROR` (default: `WARNING`)
-
-Example `~/.tiny-ntfy-mcp/config.json`:
-
-```json
-{ "NTFY_TOPIC": "ntfy-my-random-topic" }
-```
 
 ## Copilot MCP config
 
@@ -49,6 +39,9 @@ Add to `~/.copilot/mcp-config.json`:
       "type": "local",
       "command": "uv",
       "args": ["-q", "--no-progress", "--project", "/ABS/PATH/tiny-ntfy-mcp", "run", "-m", "tiny_ntfy_mcp"],
+      "env": {
+        "NTFY_TOPIC": "your-topic-here"
+      },
       "tools": ["*"]
     }
   }
@@ -59,11 +52,9 @@ Restart Copilot CLI, then call `ntfy_me` once. Use `ntfy_publish` during work (o
 
 ## Tools
 
-- `ntfy_me`: persistently enable notifications + opt into automatic progress publishing guidance
-- `ntfy_off`: persistently disable notifications
+- `ntfy_me`: enable notifications + opt into automatic progress publishing guidance
+- `ntfy_off`: disable notifications
 - `ntfy_publish`: send a notification
-
-If you used older command names, switch to `ntfy_me` and `ntfy_off`.
 
 ### ntfy_publish (recommended shape)
 
@@ -85,7 +76,6 @@ Inputs are schema-validated; unknown fields or invalid values return `-32602 Inv
 
 ## Windows notes
 
-- `~/.env` is `$HOME\\.env` in PowerShell.
 - Make sure `uv` is on `PATH` and the `--project` path matches where you cloned this repo.
 
 ## CI/CD (GitHub)
