@@ -64,12 +64,40 @@ Minimal:
 { "session": "build", "status": "progress", "result": "Running tests" }
 ```
 
+With action button (link to a PR diff):
+
+```json
+{
+  "session": "build",
+  "status": "success",
+  "result": "PR #42 ready",
+  "actions": "view, Open diff, https://github.com/org/repo/pull/42/files"
+}
+```
+
+With image attachment:
+
+```json
+{
+  "session": "deploy",
+  "status": "success",
+  "result": "Deployed to staging",
+  "attach": "https://example.com/screenshot.png",
+  "click": "https://staging.example.com"
+}
+```
+
 Common fields:
 
 - `stage` / `total`
 - `result` / `next` / `details`
 - `area` / `repo` / `branch` (added as tags: `area:<...>`, `repo:<...>`, `branch:<...>`)
-- ntfy passthrough: `tags`, `priority`, `click`, `actions`, `icon`, `attach`, `filename`, `delay`, `email`, `markdown`
+- `click` — URL opened when notification is tapped (PR, diff, deployment, dashboard)
+- `actions` — action buttons; semicolon-separated, e.g. `view, Open diff, https://github.com/org/repo/pull/1/files`
+- `attach` — URL to an image or file displayed in the notification (screenshot, diagram, chart)
+- `filename` — override the filename derived from the `attach` URL
+- `icon` — URL to a JPEG/PNG image shown beside the notification
+- other ntfy passthrough: `tags`, `priority`, `delay`, `email`, `markdown`
 - `update` (default `true`) and `sequenceId` to control `X-Sequence-ID`
 
 Inputs are schema-validated; unknown fields or invalid values return `-32602 Invalid params`.

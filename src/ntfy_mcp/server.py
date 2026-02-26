@@ -93,11 +93,14 @@ _PUBLISH_SCHEMA: dict[str, Any] = {
         "sequenceId": {"type": "string", "description": "Explicit X-Sequence-ID (overrides auto-generated)."},
         "topic": {"type": "string", "description": "Override the configured ntfy topic for this call."},
         "markdown": {"type": "boolean", "description": "Enable ntfy markdown rendering (X-Markdown)."},
-        "click": {"type": "string", "description": "ntfy click URL (X-Click)."},
-        "actions": {"type": "string", "description": "ntfy action buttons (X-Actions)."},
-        "icon": {"type": "string", "description": "ntfy icon URL (X-Icon)."},
-        "attach": {"type": "string", "description": "ntfy attachment URL (X-Attach)."},
-        "filename": {"type": "string", "description": "Filename for attachment (X-Filename)."},
+        "click": {"type": "string", "description": "ntfy click URL (X-Click). URL opened when notification is tapped. Use for linking to diffs, PRs, deployments, dashboards, or any relevant page."},
+        "actions": {
+            "type": "string",
+            "description": "ntfy action buttons (X-Actions). Semicolon-separated. Format per action: 'view, <label>, <url>' or 'http, <label>, <url>[, method=<m>][, body=<b>]'. Example: 'view, Open diff, https://github.com/org/repo/pull/1/files; view, Dashboard, https://app.example.com'. Use to give the operator one-tap access to relevant URLs.",
+        },
+        "icon": {"type": "string", "description": "ntfy icon URL (X-Icon). URL to a JPEG/PNG image shown beside the notification."},
+        "attach": {"type": "string", "description": "ntfy attachment URL (X-Attach). URL to an image or file displayed in the notification. Use for screenshots, architecture diagrams, charts, or any visual that helps the operator understand context."},
+        "filename": {"type": "string", "description": "Filename for attachment (X-Filename). Overrides the filename derived from the attach URL."},
         "email": {"type": "string", "description": "Forward via email (X-Email)."},
         "delay": {"anyOf": [{"type": "string"}, {"type": "number"}], "description": "Delay delivery (X-Delay)."},
     },
@@ -120,7 +123,7 @@ _PRIMARY_TOOLS = [
     _tool_def(
         "ntfy_publish",
         "Publish notification",
-        "Publish a progress/completion notification (fast ACK; delivery is background).",
+        "Publish a progress/completion notification (fast ACK; delivery is background). Include 'click' or 'actions' to link the operator to relevant URLs (PRs, diffs, deployments). Include 'attach' for images or visual context.",
         _PUBLISH_SCHEMA,
     ),
 ]
@@ -145,7 +148,6 @@ def _redact(value: str | None, *, keep_end: int = 4) -> str | None:
     if len(value) <= keep_end:
         return "*" * len(value)
     return ("*" * (len(value) - keep_end)) + value[-keep_end:]
-
 
 
 @dataclass(frozen=True)
@@ -514,7 +516,9 @@ def run_stdio() -> None:
     server = Server(
         "tiny-ntfy-mcp",
         version="0.1.0",
-        instructions=("When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications."),
+        instructions=(
+            "When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications. Include 'click' or 'actions' to link to relevant URLs (PRs, diffs, deployed pages, dashboards). Include 'attach' for images that add visual context (screenshots, diagrams)."
+        ),
     )
 
     @server.list_tools()

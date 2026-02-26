@@ -13,9 +13,7 @@ from ntfy_mcp.server import NtfyMcpServer
 
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Remove all config env vars so tests start clean."""
-    for key in ("NTFY_TOPIC", "NTFY_URL", "NTFY_TOKEN", "NTFY_USERNAME", "NTFY_PASSWORD",
-                "NTFY_MCP_ENABLED", "NTFY_MCP_DRY_RUN", "NTFY_MCP_TIMEOUT_SEC",
-                "NTFY_MCP_SEQUENCE_ID", "NTFY_MCP_LOG_LEVEL"):
+    for key in ("NTFY_TOPIC", "NTFY_URL", "NTFY_TOKEN", "NTFY_USERNAME", "NTFY_PASSWORD", "NTFY_MCP_ENABLED", "NTFY_MCP_DRY_RUN", "NTFY_MCP_TIMEOUT_SEC", "NTFY_MCP_SEQUENCE_ID", "NTFY_MCP_LOG_LEVEL"):
         monkeypatch.delenv(key, raising=False)
 
 
