@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v2.0.0 (2026-02-26)
+
+### Features
+
+- Enrich attachment and action descriptions to guide agent usage
+  ([`ffc8d17`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/ffc8d171d167af38ed8ffd970776b225ac57e537))
+
+- Remove all filesystem I/O; config via env vars only
+  ([`1abae24`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/1abae24ec20817b35e6fc274f0c80f9da6f55e83))
+
+
 ## v1.0.4 (2026-02-26)
 
 ### Bug Fixes
