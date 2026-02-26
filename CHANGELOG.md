@@ -1,11 +1,36 @@
 # CHANGELOG
 
 
+## v1.0.4 (2026-02-26)
+
+### Bug Fixes
+
+- Format server for CI
+  ([`e399533`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/e3995336e09bab3e059994e3c1561e7fdf83c6f0))
+
+- Rewrite MCP notifications to ntfy_me/ntfy_off
+  ([`ee8b691`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/ee8b69148e9c51b419a88c88c1a79c566ff3052d))
+
+### Continuous Integration
+
+- Keep latest tag aligned with stable release
+  ([`577ecae`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/577ecae52db6d327661da4aa3e6aa3c5e9e9da8d))
+
+- Publish latest release alias
+  ([`3d8bde7`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/3d8bde7beff4719d7b56ecbfa9f092972c3b0072))
+
+
 ## v1.0.3 (2026-02-25)
 
 ### Bug Fixes
 
-- Use underscore MCP tool names (`ntfy_enable`, `ntfy_disable`, `ntfy_status`, `ntfy_publish`) for Copilot/Agency compatibility.
+- Use underscore MCP tool names
+  ([`7aa0bc4`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/7aa0bc498790d857bf064b70c36a0f9f1a59acc9))
+
+### Chores
+
+- Prepare v1.0.3 release
+  ([`d3e7520`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/d3e7520057233a4b6ecfb3b1bb41b8fa21ec5b45))
 
 
 ## v1.0.2 (2026-02-24)
