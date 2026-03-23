@@ -1,6 +1,48 @@
 # CHANGELOG
 
 
+## v2.0.1 (2026-03-23)
+
+### Bug Fixes
+
+- **ci**: Move build from patch_tags to other_allowed_tags
+  ([`37adaf6`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/37adaf6a540e63cd6c3a335f900cc4efb28076ed))
+
+- **ci**: Pass RELEASE_TOKEN to checkout for git push auth
+  ([`e5e1514`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/e5e1514cde3018a7ceeb450e09265be6582eeda2))
+
+- **ci**: Use RELEASE_TOKEN for semantic-release push
+  ([`fac3678`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/fac3678eb3c179da51e21f34fd70243979e1a0bf))
+
+### Build System
+
+- **deps**: Bump astral-sh/setup-uv from 6 to 7
+  ([`294b5b2`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/294b5b24fd774a6be24e2ccc1acb7444020b3450))
+
+- **deps**: Bump github/codeql-action from 3 to 4
+  ([`0914614`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/0914614c17888948e68be00c8f44d25ecea904ab))
+
+- **deps**: Update actions/checkout action to v6
+  ([`297e010`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/297e0106c29df4f10dd2a0260ed4353808032575))
+
+- **deps**: Update python Docker tag to v3.14
+  ([`072ddc6`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/072ddc6a45cfdb626120fb87ac3106c630682362))
+
+- **deps**: Upgrade
+  ([`2e77134`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/2e77134b5e17ccf192563990ad4209b52003de4e))
+
+### Continuous Integration
+
+- Add Renovate configuration
+  ([`8b4079e`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/8b4079ed29bc096faf58bc8d74a27ac92f5dcbf7))
+
+- Remove dependabot-automerge workflow, Renovate handles automerge
+  ([`9b2d7bc`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/9b2d7bc5e4570befa09a715fed737734365adc41))
+
+- Remove dependabot.yml, replaced by Renovate
+  ([`a4b59bb`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/a4b59bb840c631b66d3b0ab4f110b27c121f9c32))
+
+
 ## v2.0.0 (2026-02-26)
 
 ### Features
