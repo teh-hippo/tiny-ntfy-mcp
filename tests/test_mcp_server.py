@@ -60,6 +60,7 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
     tools_resp = next(r for r in responses if r.get("id") == 2)
 
     assert init_resp["result"]["serverInfo"]["name"] == "tiny-ntfy-mcp"
+    assert init_resp["result"]["serverInfo"]["version"]
     names = {t["name"] for t in tools_resp["result"]["tools"]}
     assert names == {"ntfy_publish", "ntfy_me", "ntfy_off"}
 
@@ -113,6 +114,7 @@ def test_publish_sends_request(monkeypatch: pytest.MonkeyPatch, capture_http_ser
         assert "copilot" in req.headers["X-Tags"]
         assert "repo:r" in req.headers["X-Tags"]
         assert "Progress: 1/2" in req.body
+        assert req.headers["User-Agent"].startswith("tiny-ntfy-mcp/")
     finally:
         s.close()
 
@@ -171,3 +173,20 @@ def test_topic_override(monkeypatch: pytest.MonkeyPatch, capture_http_server) ->
         assert http_srv.requests[0].path == "/t2"
     finally:
         s.close()
+
+
+def test_version_fallback_when_package_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib
+
+    import ntfy_mcp._version as vmod
+
+    def _raise(*_args, **_kwargs):
+        raise importlib.metadata.PackageNotFoundError("fake")
+
+    monkeypatch.setattr(importlib.metadata, "version", _raise)
+    # Re-execute the module body with the patched function.
+    importlib.reload(vmod)
+    try:
+        assert vmod.__version__ == "0.0.0+dev"
+    finally:
+        importlib.reload(vmod)
