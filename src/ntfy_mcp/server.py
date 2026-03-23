@@ -22,6 +22,8 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from mcp.shared.exceptions import McpError
 
+from ntfy_mcp._version import __version__
+
 _STATUS_TAG = dict(progress="loudspeaker", success="heavy_check_mark", warning="warning", error="rotating_light", info="information_source")
 _STATUS_PRIORITY = dict(progress="low", info="default", success="high", warning="high", error="urgent")
 
@@ -244,7 +246,7 @@ def _ntfy_publish(cfg: NtfyConfig, *, message: str, headers: dict[str, str]) -> 
         return
 
     headers = {
-        "User-Agent": "tiny-ntfy-mcp/0.1.0",
+        "User-Agent": f"tiny-ntfy-mcp/{__version__}",
         "Content-Type": "text/plain; charset=utf-8",
         **headers,
     }
@@ -295,24 +297,23 @@ class NtfyWorker:
         self._q.put_nowait((cfg, headers, message))
 
     def close(self) -> None:
-        # Best-effort flush: give the worker a brief chance to send queued notifications
-        # before shutting down (shutdown is typically when the MCP client exits).
-        deadline = time.time() + 1.0
-        while time.time() < deadline and not self._q.empty():
-            time.sleep(0.01)
         self._stop.set()
+        # Inject sentinel to unblock the worker's _q.get().
         try:
             self._q.put_nowait((self._cfg, {}, ""))
         except queue.Full:
             pass
-        self._t.join(timeout=1.0)
+        # Wait long enough for an in-flight HTTP request to finish.
+        self._t.join(timeout=min(self._cfg.timeout_sec + 2.0, 30.0))
+        if self._t.is_alive():
+            _LOG.warning("shutdown: worker still alive after join timeout; queued notifications may be lost")
 
     def _run(self) -> None:
-        while not self._stop.is_set():
+        while True:
             cfg, headers, message = self._q.get()
-            if self._stop.is_set():
-                break
             if not headers and not message:
+                if self._stop.is_set():
+                    break
                 continue
             try:
                 _ntfy_publish(cfg, message=message, headers=headers)
@@ -323,6 +324,8 @@ class NtfyWorker:
             else:
                 self._stats.sent_ok += 1
                 self._stats.last_success_at = time.time()
+            if self._stop.is_set() and self._q.empty():
+                break
 
 
 class NtfyMcpServer:
@@ -515,7 +518,7 @@ def run_stdio() -> None:
 
     server = Server(
         "tiny-ntfy-mcp",
-        version="0.1.0",
+        version=__version__,
         instructions=(
             "When the user says ntfy_me, call ntfy_me() once, then call ntfy_publish(...) at task start, major milestones, blockers/errors, and completion. Use ntfy_off() to stop notifications. Include 'click' or 'actions' to link to relevant URLs (PRs, diffs, deployed pages, dashboards). Include 'attach' for images that add visual context (screenshots, diagrams)."
         ),

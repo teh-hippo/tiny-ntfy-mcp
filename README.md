@@ -50,6 +50,12 @@ Add to `~/.copilot/mcp-config.json`:
 
 Restart Copilot CLI, then call `ntfy_me` once. Use `ntfy_publish` during work (or let the model do it automatically after `ntfy_me`); call `ntfy_off` to stop.
 
+## Module layout
+
+- `tiny_ntfy_mcp` -- public entrypoint (`python -m tiny_ntfy_mcp`)
+- `ntfy_mcp` -- implementation (tools are `ntfy_*`)
+- `hippo_notify_mcp` -- deprecated backward-compatibility alias
+
 ## Tools
 
 - `ntfy_me`: enable notifications + opt into automatic progress publishing guidance
