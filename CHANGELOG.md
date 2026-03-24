@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v2.0.2 (2026-03-24)
+
+### Bug Fixes
+
+- Version strings, jsonschema dep, robust shutdown
+  ([`11d5eb5`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/11d5eb5679d0f8a1ee9645583c7d3fe83498bad9))
+
+### Build System
+
+- **deps**: Update dependency uv_build to >=0.11.0,<0.12.0
+  ([`0c4791c`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/0c4791cdfadd0953eda9cbd8cf9c268360bfa858))
+
+
 ## v2.0.1 (2026-03-23)
 
 ### Bug Fixes
