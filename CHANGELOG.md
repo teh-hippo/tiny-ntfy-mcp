@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v2.0.3 (2026-03-30)
+
+### Build System
+
+- **deps**: Upgrade
+  ([`43a0790`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/43a07904c41f79bf4531347f2fbba3b824ba7074))
+
+### Continuous Integration
+
+- Enable global automerge and fix semantic-release patch_tags
+  ([`1094f7a`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/1094f7ae7a4ba4d91662bd1944ffe73607c7bd9e))
+
+
 ## v2.0.2 (2026-03-24)
 
 ### Bug Fixes
