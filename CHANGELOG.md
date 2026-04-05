@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.0.7 (2026-04-05)
+
+### Build System
+
+- Update Renovate config for weekly grouped updates
+  ([`3c1ff8b`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/3c1ff8b060e45c362e2d62aa110167f367b35695))
+
+
 ## v2.0.6 (2026-03-30)
 
 ### Build System
