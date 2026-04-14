@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.0.9 (2026-04-14)
+
+### Build System
+
+- **deps**: Update dependency pytest to v9.0.3 [SECURITY]
+  ([`5126d0d`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/5126d0d464a6d28607362eaa786b50cbdf601fd9))
+
+
 ## v2.0.8 (2026-04-05)
 
 ### Build System
