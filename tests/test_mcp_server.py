@@ -42,22 +42,31 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
     }
     initialized = {"jsonrpc": "2.0", "method": "notifications/initialized"}
     tools_list = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
-    input_text = "\n".join(json.dumps(m) for m in (init, initialized, tools_list)) + "\n"
+    # Add proper shutdown to ensure all responses are flushed
+    shutdown = {"jsonrpc": "2.0", "id": 3, "method": "shutdown"}
+    exit_notif = {"jsonrpc": "2.0", "method": "notifications/exit"}
+    input_text = "\n".join(json.dumps(m) for m in (init, initialized, tools_list, shutdown, exit_notif)) + "\n"
 
-    proc = subprocess.run(
+    # Use Popen with communicate() to ensure proper flushing before EOF
+    proc = subprocess.Popen(
         [sys.executable, "-m", "tiny_ntfy_mcp"],
-        input=input_text,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        capture_output=True,
         env=os.environ.copy(),
-        timeout=5,
-        check=False,
     )
-    assert proc.returncode == 0, proc.stderr
+    stdout, stderr = proc.communicate(input=input_text, timeout=5)
+    assert proc.returncode == 0, stderr
 
-    responses = [json.loads(line) for line in proc.stdout.splitlines()]
-    init_resp = next(r for r in responses if r.get("id") == 1)
-    tools_resp = next(r for r in responses if r.get("id") == 2)
+    responses = [json.loads(line) for line in stdout.splitlines()]
+    responses_by_id = {r.get("id"): r for r in responses if r.get("id") is not None}
+
+    assert 1 in responses_by_id, f"Missing initialize response (id=1). Got responses: {[r.get('id') for r in responses]}"
+    assert 2 in responses_by_id, f"Missing tools/list response (id=2). Got responses: {[r.get('id') for r in responses]}"
+
+    init_resp = responses_by_id[1]
+    tools_resp = responses_by_id[2]
 
     assert init_resp["result"]["serverInfo"]["name"] == "tiny-ntfy-mcp"
     assert init_resp["result"]["serverInfo"]["version"]
