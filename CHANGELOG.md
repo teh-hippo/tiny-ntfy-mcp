@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v2.0.10 (2026-04-26)
+
+### Build System
+
+- **deps**: Update astral-sh/setup-uv action to v8
+  ([`3d3ebde`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/3d3ebdeb5d99a8fffddd2622bf5f5e4dd10bcb9e))
+
+- **deps**: Update softprops/action-gh-release action to v3
+  ([`a5f909c`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/a5f909c01ea2a69050b38a7fd648c2e122a65abb))
+
+- **deps**: Upgrade
+  ([`55b28c9`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/55b28c9e29962eb5f32f8aced74adbd97d098c78))
+
+
 ## v2.0.9 (2026-04-14)
 
 ### Build System
