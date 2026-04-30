@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -42,22 +43,55 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
     }
     initialized = {"jsonrpc": "2.0", "method": "notifications/initialized"}
     tools_list = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
-    input_text = "\n".join(json.dumps(m) for m in (init, initialized, tools_list)) + "\n"
 
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         [sys.executable, "-m", "tiny_ntfy_mcp"],
-        input=input_text,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        capture_output=True,
         env=os.environ.copy(),
-        timeout=5,
-        check=False,
     )
-    assert proc.returncode == 0, proc.stderr
 
-    responses = [json.loads(line) for line in proc.stdout.splitlines()]
-    init_resp = next(r for r in responses if r.get("id") == 1)
-    tools_resp = next(r for r in responses if r.get("id") == 2)
+    # Collect JSON-RPC responses keyed by id in a background thread.
+    # Stdin is kept open until both expected responses arrive so the server
+    # does not receive EOF (and cancel in-flight handlers) too early.
+    responses: dict[int, dict] = {}
+    done = threading.Event()
+
+    def _read_stdout() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if "id" in r:
+                responses[r["id"]] = r
+                if 1 in responses and 2 in responses:
+                    done.set()
+                    return
+
+    reader = threading.Thread(target=_read_stdout, daemon=True)
+    reader.start()
+
+    try:
+        assert proc.stdin is not None
+        for msg in (init, initialized, tools_list):
+            proc.stdin.write(json.dumps(msg) + "\n")
+        proc.stdin.flush()
+
+        done.wait(timeout=5)
+    finally:
+        proc.stdin.close()
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+    assert 1 in responses and 2 in responses, f"Missing responses; received ids: {sorted(responses)}"
+    init_resp = responses[1]
+    tools_resp = responses[2]
 
     assert init_resp["result"]["serverInfo"]["name"] == "tiny-ntfy-mcp"
     assert init_resp["result"]["serverInfo"]["version"]
