@@ -61,16 +61,18 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
 
     def _read_stdout() -> None:
         assert proc.stdout is not None
-        for line in proc.stdout:
-            try:
-                r = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if "id" in r:
-                responses[r["id"]] = r
-                if 1 in responses and 2 in responses:
-                    done.set()
-                    return
+        try:
+            for line in proc.stdout:
+                try:
+                    r = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if "id" in r:
+                    responses[r["id"]] = r
+                    if 1 in responses and 2 in responses:
+                        return
+        finally:
+            done.set()
 
     reader = threading.Thread(target=_read_stdout, daemon=True)
     reader.start()
