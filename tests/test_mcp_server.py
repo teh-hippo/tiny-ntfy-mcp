@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -42,20 +43,47 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
     }
     initialized = {"jsonrpc": "2.0", "method": "notifications/initialized"}
     tools_list = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
-    input_text = "\n".join(json.dumps(m) for m in (init, initialized, tools_list)) + "\n"
 
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         [sys.executable, "-m", "tiny_ntfy_mcp"],
-        input=input_text,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
-        capture_output=True,
         env=os.environ.copy(),
-        timeout=5,
-        check=False,
     )
-    assert proc.returncode == 0, proc.stderr
+    responses: list[dict] = []
+    try:
+        for msg in (init, initialized, tools_list):
+            proc.stdin.write(json.dumps(msg) + "\n")
+            proc.stdin.flush()
 
-    responses = [json.loads(line) for line in proc.stdout.splitlines()]
+        # Collect responses in a background thread with a timeout.
+        # Stdin is intentionally kept open until the tools/list response arrives
+        # so that MCP's transport-close handler (mcp>=1.27.0) does not cancel
+        # the in-flight request before it can respond.
+        def _collect() -> None:
+            for raw in proc.stdout:
+                raw = raw.strip()
+                if raw:
+                    responses.append(json.loads(raw))
+                if any(r.get("id") == 2 for r in responses):
+                    return
+
+        t = threading.Thread(target=_collect, daemon=True)
+        t.start()
+        t.join(timeout=5)
+    finally:
+        proc.stdin.close()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+
+    stderr_output = proc.stderr.read()
+    assert any(r.get("id") == 2 for r in responses), "timed out waiting for tools/list response"
+    assert proc.returncode == 0, stderr_output
     init_resp = next(r for r in responses if r.get("id") == 1)
     tools_resp = next(r for r in responses if r.get("id") == 2)
 
