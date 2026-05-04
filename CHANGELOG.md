@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v2.0.11 (2026-05-04)
+
+### Bug Fixes
+
+- Keep stdin open in stdio test to survive mcp>=1.27.0 transport-close cancel
+  ([`be334dc`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/be334dca5711f8c578d06801a7ae158650e49a3f))
+
+### Testing
+
+- Signal tools/list response via Event to avoid reader-thread race
+  ([`bf23522`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/bf2352244d870f2908cf68f65d0827fde31a8729))
+
+
 ## v2.0.10 (2026-04-26)
 
 ### Build System
