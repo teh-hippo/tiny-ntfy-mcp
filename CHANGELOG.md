@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v2.0.12 (2026-05-04)
+
+### Build System
+
+- **deps**: Upgrade
+  ([`6eeb8eb`](https://github.com/teh-hippo/tiny-ntfy-mcp/commit/6eeb8eb68fe86d7875a70100bb1ec4bda10b2965))
+
+
 ## v2.0.11 (2026-05-04)
 
 ### Bug Fixes
