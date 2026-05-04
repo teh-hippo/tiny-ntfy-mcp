@@ -53,26 +53,32 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
         env=os.environ.copy(),
     )
     responses: list[dict] = []
+    # Signalled by the reader once the tools/list response (id=2) is observed,
+    # so the main thread waits on a real event rather than racing a join timeout.
+    saw_tools_list = threading.Event()
+
+    # Stdin is intentionally kept open until the tools/list response arrives
+    # so that MCP's transport-close handler (mcp>=1.27.0) does not cancel the
+    # in-flight request before it can respond.
+    def _collect() -> None:
+        for raw in proc.stdout:
+            raw = raw.strip()
+            if not raw:
+                continue
+            msg = json.loads(raw)
+            responses.append(msg)
+            if msg.get("id") == 2:
+                saw_tools_list.set()
+                return
+
+    t = threading.Thread(target=_collect, daemon=True)
+    t.start()
     try:
         for msg in (init, initialized, tools_list):
             proc.stdin.write(json.dumps(msg) + "\n")
             proc.stdin.flush()
 
-        # Collect responses in a background thread with a timeout.
-        # Stdin is intentionally kept open until the tools/list response arrives
-        # so that MCP's transport-close handler (mcp>=1.27.0) does not cancel
-        # the in-flight request before it can respond.
-        def _collect() -> None:
-            for raw in proc.stdout:
-                raw = raw.strip()
-                if raw:
-                    responses.append(json.loads(raw))
-                if any(r.get("id") == 2 for r in responses):
-                    return
-
-        t = threading.Thread(target=_collect, daemon=True)
-        t.start()
-        t.join(timeout=5)
+        got_response = saw_tools_list.wait(timeout=5)
     finally:
         proc.stdin.close()
         try:
@@ -80,9 +86,12 @@ def test_stdio_initialize_and_tools_list(monkeypatch: pytest.MonkeyPatch) -> Non
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
+        # Reader exits naturally once stdout closes; join to ensure no further
+        # writes to `responses` race the assertions below.
+        t.join(timeout=5)
 
     stderr_output = proc.stderr.read()
-    assert any(r.get("id") == 2 for r in responses), "timed out waiting for tools/list response"
+    assert got_response, f"timed out waiting for tools/list response. Got ids: {[r.get('id') for r in responses]}\nstderr: {stderr_output}"
     assert proc.returncode == 0, stderr_output
     init_resp = next(r for r in responses if r.get("id") == 1)
     tools_resp = next(r for r in responses if r.get("id") == 2)
