@@ -1,119 +1,95 @@
 # tiny-ntfy-mcp
 
-Tiny local **MCP (stdio)** server exposing `ntfy_*` tools so agents can send fast, low-impact progress notifications via [ntfy](https://ntfy.sh/).
+> [!IMPORTANT]
+> **Deprecated and archived.** This MCP server has been retired in favour of a small Copilot CLI skill that calls `ntfy.sh` directly with `curl`. For a single user with anonymous publishing, the MCP machinery (worker thread, schema validation, sequence-ID tracking, on/off state) was over-engineering for what is, fundamentally, one HTTP POST.
+>
+> The replacement skill is reproduced below. Copy it into `~/.copilot/skills/ntfy-me/SKILL.md` (or your equivalent skills directory) and export `NTFY_TOPIC` from your shell profile.
+>
+> No further releases will be made. All open issues and PRs are closed.
 
-- **Fast ACK:** tool calls return immediately; delivery happens in the background.
-- **Update-in-place:** by default, `ntfy_publish` sets `X-Sequence-ID` so progress updates edit a single notification instead of spamming.
+## Replacement: `ntfy-me` Copilot CLI skill
 
-## Quickstart
+`~/.copilot/skills/ntfy-me/SKILL.md`:
 
-1. Pick a topic (e.g. `ntfy-my-random-topic`) and subscribe to it in the ntfy app.
-2. Set `NTFY_TOPIC` (and auth if needed).
-3. Add the MCP config below to Copilot CLI and restart it.
+````markdown
+---
+name: ntfy-me
+description: Send a single push notification to the user's phone via ntfy.sh. Use ONLY when the user explicitly says "ntfy me", "ntfy-me", "ntfy that ...", "ping my phone", or otherwise mentions ntfy by name. Do NOT use as a generic "task complete" notifier and do NOT auto-trigger from prompts like "let me know when done".
+---
 
-## Configuration
+# ntfy-me
 
-Set `NTFY_TOPIC` (and auth if needed) via the MCP config `env` block (see below), environment variables, or `mise env`.
+Anonymous publish to the user's pre-configured ntfy.sh topic. The topic lives in
+`$NTFY_TOPIC`, exported by the user's shell profile (`.zshrc` on WSL/Linux,
+PowerShell profile on Windows).
 
-Required:
+## Send
 
-- `NTFY_TOPIC`
-
-Optional:
-
-- `NTFY_URL` (default: `https://ntfy.sh`)
-- Auth: `NTFY_TOKEN` **or** `NTFY_USERNAME` + `NTFY_PASSWORD`
-- `NTFY_MCP_ENABLED` = `1`/`0` (overrides in-session state)
-- `NTFY_MCP_TIMEOUT_SEC` (default: `2`)
-- `NTFY_MCP_DRY_RUN` = `1` (log publishes to stderr without sending)
-- `NTFY_MCP_LOG_LEVEL` = `DEBUG|INFO|WARNING|ERROR` (default: `WARNING`)
-
-## Copilot MCP config
-
-Add to `~/.copilot/mcp-config.json`:
-
-```json
-{
-  "mcpServers": {
-    "tiny-ntfy-mcp": {
-      "type": "local",
-      "command": "uv",
-      "args": ["-q", "--no-progress", "--project", "/ABS/PATH/tiny-ntfy-mcp", "run", "-m", "tiny_ntfy_mcp"],
-      "env": {
-        "NTFY_TOPIC": "your-topic-here"
-      },
-      "tools": ["*"]
-    }
-  }
-}
+```bash
+curl -fsS --max-time 5 -d "<message>" "https://ntfy.sh/$NTFY_TOPIC"
 ```
 
-Restart Copilot CLI, then call `ntfy_me` once. Use `ntfy_publish` during work (or let the model do it automatically after `ntfy_me`); call `ntfy_off` to stop.
+`<message>` is the plain-text body. Keep it short — this lands on a phone.
 
-## Module layout
+## Optional headers
 
-- `tiny_ntfy_mcp` -- public entrypoint (`python -m tiny_ntfy_mcp`)
-- `ntfy_mcp` -- implementation (tools are `ntfy_*`)
-- `hippo_notify_mcp` -- deprecated backward-compatibility alias
+Add only when the user asks for them or when the context clearly justifies it.
+Pass each as `-H "<Name>: <value>"`.
 
-## Tools
+| Header        | Use                                                        |
+|---------------|------------------------------------------------------------|
+| `Title`       | Short headline shown above the body.                       |
+| `Priority`    | `min`, `low`, `default`, `high`, `max`, `urgent` (or 1-5). |
+| `Tags`        | Comma-separated emoji shortcodes / labels.                 |
+| `Click`       | URL opened when the notification is tapped.                |
+| `Actions`     | One-tap buttons. Format: `view, <label>, <url>`.           |
+| `Sequence-ID` | Stable id to update the same notification in place.        |
+| `Markdown`    | `yes` to render the body as markdown.                      |
 
-- `ntfy_me`: enable notifications + opt into automatic progress publishing guidance
-- `ntfy_off`: disable notifications
-- `ntfy_publish`: send a notification
+Example with title, priority, click, and update-in-place:
 
-### ntfy_publish (recommended shape)
-
-Minimal:
-
-```json
-{ "session": "build", "status": "progress", "result": "Running tests" }
+```bash
+curl -fsS --max-time 5 \
+  -H "Title: Build green" \
+  -H "Priority: high" \
+  -H "Tags: white_check_mark" \
+  -H "Click: https://github.com/owner/repo/actions/runs/123" \
+  -H "Sequence-ID: my-build" \
+  -d "All checks passed in 1m42s." \
+  "https://ntfy.sh/$NTFY_TOPIC"
 ```
 
-With action button (link to a PR diff):
+## Don't
 
-```json
-{
-  "session": "build",
-  "status": "success",
-  "result": "PR #42 ready",
-  "actions": "view, Open diff, https://github.com/org/repo/pull/42/files"
-}
+- Don't loop. One call per explicit user request.
+- Don't auto-publish progress updates unless the user asked you to.
+- Don't include secrets, tokens, full paths to sensitive files, or PII.
+- Don't fall back to Bitwarden — `$NTFY_TOPIC` is already in the environment.
+- Don't invent a topic. If `$NTFY_TOPIC` is empty, tell the user instead of guessing.
+````
+
+## Shell profile
+
+WSL/Linux (`~/.zshrc` or equivalent):
+
+```sh
+export NTFY_TOPIC=your-topic-here
 ```
 
-With image attachment:
+Windows PowerShell profile:
 
-```json
-{
-  "session": "deploy",
-  "status": "success",
-  "result": "Deployed to staging",
-  "attach": "https://example.com/screenshot.png",
-  "click": "https://staging.example.com"
-}
+```powershell
+$env:NTFY_TOPIC = 'your-topic-here'
 ```
 
-Common fields:
+## Removing the MCP
 
-- `stage` / `total`
-- `result` / `next` / `details`
-- `area` / `repo` / `branch` (added as tags: `area:<...>`, `repo:<...>`, `branch:<...>`)
-- `click` — URL opened when notification is tapped (PR, diff, deployment, dashboard)
-- `actions` — action buttons; semicolon-separated, e.g. `view, Open diff, https://github.com/org/repo/pull/1/files`
-- `attach` — URL to an image or file displayed in the notification (screenshot, diagram, chart)
-- `filename` — override the filename derived from the `attach` URL
-- `icon` — URL to a JPEG/PNG image shown beside the notification
-- other ntfy passthrough: `tags`, `priority`, `delay`, `email`, `markdown`
-- `update` (default `true`) and `sequenceId` to control `X-Sequence-ID`
+If you previously installed this MCP, remove it from your Copilot CLI config (`~/.copilot/mcp-config.json`) and from `mise` (or whichever package manager installed it):
 
-Inputs are schema-validated; unknown fields or invalid values return `-32602 Invalid params`.
+```bash
+mise uninstall "pipx:git+https://github.com/teh-hippo/tiny-ntfy-mcp.git"
+```
 
-## Windows notes
+## Final release
 
-- Make sure `uv` is on `PATH` and the `--project` path matches where you cloned this repo.
-
-## CI/CD (GitHub)
-
-- Validate workflow runs ruff + pytest + `uv build`; optional live ntfy E2E runs when `NTFY_CI_TOPIC` secret is set.
-- Release workflow uses `python-semantic-release` to create SemVer tags + GitHub Releases from Conventional Commits.
-- Recommended repo settings: **rebase merges only**, auto-merge enabled, branch protection requiring the **Validate** check + linear history.
+The last published version is `v2.0.12`. The historical `README` and full source are preserved in the git history.
